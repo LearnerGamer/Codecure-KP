@@ -1,25 +1,27 @@
-# React + Vite
+# AI Emergency Healthcare System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, fast, and responsive web application simulating an end-to-end emergency medical assistance platform. Built with React, Vite, and Lucide Icons, featuring a beautiful glassmorphism dark-theme dashboard.
 
-Currently, two official plugins are available:
+## Features Included
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **🚑 Emergency Request System**: Triggers emergencies with simulated auto GPS detection and patient ID cross-referencing.
+- **🗺️ Smart Dispatch Center**: Simulates routing logistics between the patient and quickest hospital trauma bay.
+- **🏥 Hospital Preparation Dashboard**: Tracks active alerts, trauma team assignments, checklists, and expected times of arrival.
+- **🩺 Live Patient Monitoring Dashboard**: Interactive and highly dynamic vitals simulation (Heart Rate, SpO2, Blood Pressure) complete with AI Severity classification.
+- **👨‍⚕️ Smart Staff Assignment**: Intelligent resource allocation UI predicting workload distribution and managing doctors and nurses intuitively.
 
-## React Compiler
+## Running the Project
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+If the server isn't running already, you can start it using:
+```bash
+cd emergency-healthcare
+npm run dev
+```
 
-## Expanding the ESLint configuration
+Navigate to `http://localhost:5173/` in your browser.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-
-endpoints:
-/patient/
-/patient/live vitals
-/ambulances/livedata
-/ambulances/availability/
-doctors/
-/doctors/avaialbility
-/doc/status/
+## Tech Stack
+- Frontend: React (Vite)
+- Routing: React Router v6
+- Icons: Lucide React
+- CSS: Custom raw CSS mapping for absolute control over layout and glassmorphism.
