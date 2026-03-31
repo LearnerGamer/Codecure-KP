@@ -1,0 +1,779 @@
+import React, { useState, useEffect } from 'react';
+import { Activity, Ambulance, UserCog, Stethoscope, X, Bell, FileText, CheckCircle, Clock, AlertCircle, Calendar, Users, ClipboardList, TrendingUp, Search, Filter, BarChart3, Award, RefreshCw } from 'lucide-react';
+
+export default function HospitalPortal() {
+  const [selectedPortal, setSelectedPortal] = useState(null);
+  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [error, setError] = useState('');
+  const [loggedInPortal, setLoggedInPortal] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterUrgency, setFilterUrgency] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  
+  const [patientData, setPatientData] = useState({
+    name: '',
+    age: '',
+    gender: '',
+    medicalHistory: '',
+    heartRate: '',
+    bloodPressureSystolic: '',
+    bloodPressureDiastolic: '',
+    temperature: '',
+    oxygenSaturation: '',
+    respiratoryRate: '',
+    consciousness: '',
+    symptoms: '',
+    allergies: ''
+  });
+
+  const [emergencyQueue, setEmergencyQueue] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [scheduleData, setScheduleData] = useState({
+    assignedDoctor: '',
+    doctorId: '',
+    appointmentTime: '',
+    roomNumber: '',
+    priority: '',
+    notes: ''
+  });
+
+  const [doctorDatabase, setDoctorDatabase] = useState([
+    { 
+      id: 1, 
+      name: 'Dr. Sarah Johnson', 
+      department: 'Cardiology', 
+      available: true,
+      schedule: ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 2, 
+      name: 'Dr. Michael Chen', 
+      department: 'Emergency Medicine', 
+      available: true,
+      schedule: ['08:00 AM', '10:00 AM', '12:00 PM', '03:00 PM', '05:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 3, 
+      name: 'Dr. Emily Roberts', 
+      department: 'Neurology', 
+      available: true,
+      schedule: ['09:00 AM', '11:30 AM', '02:30 PM', '04:30 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 4, 
+      name: 'Dr. James Wilson', 
+      department: 'General Medicine', 
+      available: true,
+      schedule: ['10:00 AM', '01:00 PM', '03:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 5, 
+      name: 'Dr. Maria Garcia', 
+      department: 'Pulmonology', 
+      available: true,
+      schedule: ['08:30 AM', '10:30 AM', '01:30 PM', '03:30 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 6, 
+      name: 'Dr. David Kim', 
+      department: 'General Surgery', 
+      available: true,
+      schedule: ['09:00 AM', '12:00 PM', '02:00 PM', '05:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 7, 
+      name: 'Dr. Lisa Anderson', 
+      department: 'Cardiology', 
+      available: true,
+      schedule: ['08:00 AM', '10:00 AM', '01:00 PM', '04:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 8, 
+      name: 'Dr. Robert Taylor', 
+      department: 'Neurology', 
+      available: true,
+      schedule: ['09:30 AM', '11:00 AM', '02:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 9, 
+      name: 'Dr. Amanda White', 
+      department: 'Emergency Medicine', 
+      available: true,
+      schedule: ['07:00 AM', '09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    },
+    { 
+      id: 10, 
+      name: 'Dr. Christopher Brown', 
+      department: 'Pulmonology', 
+      available: true,
+      schedule: ['08:00 AM', '10:00 AM', '12:30 PM', '03:00 PM'],
+      currentPatients: [],
+      patientsToday: 0,
+      avgWaitTime: 0
+    }
+  ]);
+
+  const [availableRooms, setAvailableRooms] = useState([
+    { number: 'ER-101', type: 'Critical Care', available: true },
+    { number: 'ER-102', type: 'Critical Care', available: true },
+    { number: 'ER-103', type: 'Critical Care', available: true },
+    { number: 'Ward-201', type: 'General Ward', available: true },
+    { number: 'Ward-202', type: 'General Ward', available: true },
+    { number: 'Ward-203', type: 'General Ward', available: true },
+    { number: 'ICU-301', type: 'ICU', available: true },
+    { number: 'ICU-302', type: 'ICU', available: true },
+    { number: 'OBS-401', type: 'Observation', available: true },
+    { number: 'OBS-402', type: 'Observation', available: true }
+  ]);
+
+  useEffect(() => {
+    loadFromStorage();
+  }, []);
+
+  useEffect(() => {
+    saveToStorage();
+  }, [emergencyQueue, doctorDatabase, availableRooms]);
+
+  const loadFromStorage = async () => {
+    try {
+      const queueData = await window.storage.get('emergency_queue');
+      const doctorData = await window.storage.get('doctor_database');
+      const roomData = await window.storage.get('available_rooms');
+      
+      if (queueData && queueData.value) {
+        setEmergencyQueue(JSON.parse(queueData.value));
+      }
+      if (doctorData && doctorData.value) {
+        setDoctorDatabase(JSON.parse(doctorData.value));
+      }
+      if (roomData && roomData.value) {
+        setAvailableRooms(JSON.parse(roomData.value));
+      }
+    } catch (error) {
+      console.log('No stored data found or error loading:', error);
+    }
+  };
+
+  const saveToStorage = async () => {
+    try {
+      await window.storage.set('emergency_queue', JSON.stringify(emergencyQueue));
+      await window.storage.set('doctor_database', JSON.stringify(doctorDatabase));
+      await window.storage.set('available_rooms', JSON.stringify(availableRooms));
+    } catch (error) {
+      console.log('Error saving to storage:', error);
+    }
+  };
+
+  const addNotification = (message, type = 'info') => {
+    const notification = {
+      id: Date.now(),
+      message,
+      type,
+      timestamp: new Date().toLocaleTimeString()
+    };
+    setNotifications(prev => [notification, ...prev.slice(0, 4)]);
+    
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== notification.id));
+    }, 5000);
+  };
+
+  const portals = [
+    {
+      id: 'ambulance',
+      title: 'Ambulance',
+      icon: Ambulance,
+      color: 'from-green-600 to-green-700',
+      demoUser: 'nurse@demo',
+      demoPass: 'nurse123',
+      description: 'Record patient vitals during transport'
+    },
+    {
+      id: 'admin',
+      title: 'Admin',
+      icon: UserCog,
+      color: 'from-green-700 to-green-800',
+      demoUser: 'admin@demo',
+      demoPass: 'admin123',
+      description: 'Manage patient priority & doctor schedules'
+    },
+    {
+      id: 'doctor',
+      title: 'Doctor',
+      icon: Stethoscope,
+      color: 'from-green-600 to-green-700',
+      demoUser: 'doctor@demo',
+      demoPass: 'doc123',
+      description: 'View assigned patients & schedules'
+    }
+  ];
+
+  const handleLogin = () => {
+    const portal = portals.find(p => p.id === selectedPortal);
+    
+    if (credentials.username === portal.demoUser && credentials.password === portal.demoPass) {
+      setLoggedInPortal(portal.id);
+      setSelectedPortal(null);
+      setCredentials({ username: '', password: '' });
+      setError('');
+      addNotification(`Welcome to ${portal.title} Portal`, 'success');
+    } else {
+      setError('Invalid credentials. Please try the demo credentials shown below.');
+    }
+  };
+
+  const handleLogout = () => {
+    setLoggedInPortal(null);
+    setSelectedPatient(null);
+    setShowAnalytics(false);
+    setPatientData({
+      name: '',
+      age: '',
+      gender: '',
+      medicalHistory: '',
+      heartRate: '',
+      bloodPressureSystolic: '',
+      bloodPressureDiastolic: '',
+      temperature: '',
+      oxygenSaturation: '',
+      respiratoryRate: '',
+      consciousness: '',
+      symptoms: '',
+      allergies: ''
+    });
+    setScheduleData({
+      assignedDoctor: '',
+      doctorId: '',
+      appointmentTime: '',
+      roomNumber: '',
+      priority: '',
+      notes: ''
+    });
+    addNotification('Logged out successfully', 'info');
+  };
+
+  const closeModal = () => {
+    setSelectedPortal(null);
+    setCredentials({ username: '', password: '' });
+    setError('');
+  };
+
+  const handleInputChange = (field, value) => {
+    setPatientData({ ...patientData, [field]: value });
+  };
+
+  const calculateUrgency = (data) => {
+    let urgencyScore = 0;
+    
+    const hr = parseInt(data.heartRate);
+    if (hr < 60 || hr > 100) urgencyScore += 2;
+    if (hr < 40 || hr > 120) urgencyScore += 3;
+    
+    const sysBP = parseInt(data.bloodPressureSystolic);
+    const diaBP = parseInt(data.bloodPressureDiastolic);
+    if (sysBP > 140 || sysBP < 90 || diaBP > 90 || diaBP < 60) urgencyScore += 2;
+    if (sysBP > 180 || sysBP < 80) urgencyScore += 3;
+    
+    const o2 = parseInt(data.oxygenSaturation);
+    if (o2 < 95) urgencyScore += 2;
+    if (o2 < 90) urgencyScore += 4;
+    
+    const temp = parseFloat(data.temperature);
+    if (temp > 100.4 || temp < 95) urgencyScore += 2;
+    if (temp > 103 || temp < 94) urgencyScore += 3;
+    
+    if (data.consciousness === 'unconscious' || data.consciousness === 'drowsy') urgencyScore += 4;
+    
+    if (urgencyScore >= 8) return 'CRITICAL';
+    if (urgencyScore >= 5) return 'HIGH';
+    if (urgencyScore >= 2) return 'MEDIUM';
+    return 'LOW';
+  };
+
+  const predictDisease = (patient) => {
+    const symptoms = patient.symptoms.toLowerCase();
+    const vitals = {
+      oxygen: parseInt(patient.oxygenSaturation),
+      temperature: parseFloat(patient.temperature),
+      heartRate: parseInt(patient.heartRate),
+      sysBP: parseInt(patient.bloodPressureSystolic),
+      respRate: parseInt(patient.respiratoryRate)
+    };
+
+    if ((vitals.oxygen < 90 || symptoms.includes("chest pain") || symptoms.includes("chest pressure")) && vitals.heartRate > 100) {
+      return { 
+        disease: "Acute Myocardial Infarction (Heart Attack)", 
+        department: "Cardiology",
+        icon: "❤️",
+        urgency: "CRITICAL",
+        recommendations: "Immediate ECG, Troponin levels, Aspirin administration"
+      };
+    }
+
+    if (symptoms.includes("paralysis") || symptoms.includes("numbness") || 
+        symptoms.includes("slurred speech") || symptoms.includes("vision") ||
+        symptoms.includes("face drooping")) {
+      return { 
+        disease: "Acute Cerebrovascular Accident (Stroke)", 
+        department: "Neurology",
+        icon: "🧠",
+        urgency: "CRITICAL",
+        recommendations: "CT scan immediately, tPA consideration, time is brain"
+      };
+    }
+
+    if (vitals.oxygen < 88 || (vitals.respRate > 30 && vitals.oxygen < 92)) {
+      return { 
+        disease: "Acute Respiratory Distress Syndrome", 
+        department: "Pulmonology",
+        icon: "🫁",
+        urgency: "CRITICAL",
+        recommendations: "Oxygen therapy, ABG analysis, chest X-ray"
+      };
+    }
+
+    if (vitals.temperature > 101.3 && vitals.heartRate > 90 && vitals.respRate > 20) {
+      return { 
+        disease: "Sepsis / Severe Systemic Infection", 
+        department: "Emergency Medicine",
+        icon: "🌡️",
+        urgency: "HIGH",
+        recommendations: "Blood cultures, IV antibiotics, lactate levels"
+      };
+    }
+
+    if (vitals.temperature > 100.4 && (symptoms.includes("cough") || symptoms.includes("breathing difficulty"))) {
+      return { 
+        disease: "Community-Acquired Pneumonia", 
+        department: "Pulmonology",
+        icon: "🫁",
+        urgency: "HIGH",
+        recommendations: "Chest X-ray, sputum culture, antibiotic therapy"
+      };
+    }
+
+    if (vitals.sysBP > 180) {
+      return { 
+        disease: "Hypertensive Emergency", 
+        department: "Cardiology",
+        icon: "❤️",
+        urgency: "HIGH",
+        recommendations: "IV antihypertensives, end-organ damage assessment"
+      };
+    }
+
+    if (symptoms.includes("bleeding") || symptoms.includes("fracture") || 
+        symptoms.includes("injury") || symptoms.includes("accident")) {
+      return { 
+        disease: "Acute Trauma / Physical Injury", 
+        department: "Emergency Medicine",
+        icon: "🚑",
+        urgency: "HIGH",
+        recommendations: "FAST exam, X-rays, trauma protocol activation"
+      };
+    }
+
+    if ((symptoms.includes("headache") && symptoms.includes("vomiting")) || 
+        symptoms.includes("seizure") || symptoms.includes("confusion")) {
+      return { 
+        disease: "Neurological Emergency (Possible Meningitis/SAH)", 
+        department: "Neurology",
+        icon: "🧠",
+        urgency: "HIGH",
+        recommendations: "CT head, lumbar puncture consideration, neurological exam"
+      };
+    }
+
+    if (symptoms.includes("abdominal pain") || symptoms.includes("stomach pain")) {
+      const severity = symptoms.includes("severe") || vitals.heartRate > 100 ? "HIGH" : "MEDIUM";
+      return { 
+        disease: "Acute Abdomen (Requires Surgical Evaluation)", 
+        department: "General Surgery",
+        icon: "🏥",
+        urgency: severity,
+        recommendations: "Abdominal CT, surgical consult, NPO status"
+      };
+    }
+
+    if (symptoms.includes("diabetes") || symptoms.includes("sugar") || symptoms.includes("insulin")) {
+      return { 
+        disease: "Diabetic Emergency (DKA/Hypoglycemia)", 
+        department: "Emergency Medicine",
+        icon: "💉",
+        urgency: "MEDIUM",
+        recommendations: "Blood glucose, metabolic panel, insulin protocol"
+      };
+    }
+
+    if (symptoms.includes("allergic") || symptoms.includes("rash") || symptoms.includes("swelling")) {
+      const severity = symptoms.includes("breathing") || vitals.oxygen < 94 ? "HIGH" : "MEDIUM";
+      return { 
+        disease: severity === "HIGH" ? "Anaphylaxis" : "Allergic Reaction", 
+        department: "Emergency Medicine",
+        icon: "⚠️",
+        urgency: severity,
+        recommendations: severity === "HIGH" ? "Epinephrine, antihistamines, airway management" : "Antihistamines, corticosteroids, observation"
+      };
+    }
+
+    return { 
+      disease: "Undifferentiated Medical Condition", 
+      department: "General Medicine",
+      icon: "🏥",
+      urgency: "MEDIUM",
+      recommendations: "Complete physical exam, basic labs, vital monitoring"
+    };
+  };
+
+  const handleSubmitVitals = () => {
+    if (!patientData.name || !patientData.age || !patientData.heartRate) {
+      alert('Please fill in required fields: Name, Age, and Heart Rate');
+      return;
+    }
+
+    const urgency = calculateUrgency(patientData);
+    const prediction = predictDisease(patientData);
+    
+    const newPatient = {
+      id: Date.now(),
+      timestamp: new Date().toLocaleString(),
+      arrivalTime: new Date(),
+      patient: { ...patientData },
+      urgency: urgency,
+      prediction: prediction,
+      status: 'pending',
+      vitalsAlert: urgency === 'CRITICAL' || urgency === 'HIGH'
+    };
+
+    setEmergencyQueue(prev => [newPatient, ...prev].sort((a, b) => {
+      const priorityOrder = { 'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
+      return priorityOrder[a.urgency] - priorityOrder[b.urgency];
+    }));
+    
+    if (urgency === 'CRITICAL' || urgency === 'HIGH') {
+      addNotification(`🚨 ${urgency} PRIORITY: ${patientData.name} - ${prediction.disease}`, 'critical');
+    } else {
+      addNotification(`New patient: ${patientData.name}`, 'info');
+    }
+    
+    setPatientData({
+      name: '',
+      age: '',
+      gender: '',
+      medicalHistory: '',
+      heartRate: '',
+      bloodPressureSystolic: '',
+      bloodPressureDiastolic: '',
+      temperature: '',
+      oxygenSaturation: '',
+      respiratoryRate: '',
+      consciousness: '',
+      symptoms: '',
+      allergies: ''
+    });
+  };
+
+  const handleScheduleChange = (field, value) => {
+    setScheduleData({ ...scheduleData, [field]: value });
+    
+    if (field === 'assignedDoctor') {
+      const selectedDoc = doctorDatabase.find(d => `${d.name} - ${d.department}` === value);
+      if (selectedDoc) {
+        setScheduleData(prev => ({ ...prev, doctorId: selectedDoc.id }));
+      }
+    }
+  };
+
+  const assignRoom = (priority) => {
+    let roomType;
+    
+    switch(priority) {
+      case 'CRITICAL':
+      case 'immediate':
+        roomType = 'Critical Care';
+        break;
+      case 'HIGH':
+      case 'urgent':
+        roomType = 'ICU';
+        break;
+      case 'MEDIUM':
+      case 'semi-urgent':
+        roomType = 'Observation';
+        break;
+      default:
+        roomType = 'General Ward';
+    }
+    
+    const room = availableRooms.find(r => r.type === roomType && r.available);
+    return room || availableRooms.find(r => r.available);
+  };
+
+  const handleSchedulePatient = () => {
+    if (!scheduleData.assignedDoctor || !scheduleData.appointmentTime || !scheduleData.priority) {
+      alert('Please fill in all required fields (Doctor, Time, Priority)');
+      return;
+    }
+
+    const assignedRoom = assignRoom(selectedPatient.urgency);
+    
+    if (!assignedRoom) {
+      alert('No rooms available at the moment. Please try again later.');
+      return;
+    }
+
+    const selectedDoctor = doctorDatabase.find(d => d.id === scheduleData.doctorId);
+    
+    if (!selectedDoctor) {
+      alert('Invalid doctor selection');
+      return;
+    }
+
+    setAvailableRooms(prev => prev.map(room => 
+      room.number === assignedRoom.number 
+        ? { ...room, available: false }
+        : room
+    ));
+
+    const updatedDoctors = doctorDatabase.map(doc => {
+      if (doc.id === scheduleData.doctorId) {
+        return {
+          ...doc,
+          currentPatients: [...doc.currentPatients, {
+            patientName: selectedPatient.patient.name,
+            patientId: selectedPatient.id,
+            time: scheduleData.appointmentTime,
+            roomNumber: assignedRoom.number
+          }],
+          available: doc.currentPatients.length >= 2 ? false : true,
+          patientsToday: doc.patientsToday + 1
+        };
+      }
+      return doc;
+    });
+    
+    setDoctorDatabase(updatedDoctors);
+
+    const updatedQueue = emergencyQueue.map(p => 
+      p.id === selectedPatient.id 
+        ? { 
+            ...p, 
+            status: 'scheduled', 
+            scheduleInfo: { 
+              ...scheduleData,
+              roomNumber: assignedRoom.number,
+              roomType: assignedRoom.type,
+              autoAssignedRoom: true
+            }
+          }
+        : p
+    );
+    
+    setEmergencyQueue(updatedQueue);
+    
+    addNotification(`✅ ${selectedPatient.patient.name} scheduled with ${scheduleData.assignedDoctor}`, 'success');
+    
+    setSelectedPatient(null);
+    setScheduleData({
+      assignedDoctor: '',
+      doctorId: '',
+      appointmentTime: '',
+      roomNumber: '',
+      priority: '',
+      notes: ''
+    });
+  };
+
+  const completeAppointment = (patientId) => {
+    const patient = emergencyQueue.find(p => p.id === patientId);
+    if (!patient || !patient.scheduleInfo) return;
+
+    setAvailableRooms(prev => prev.map(room => 
+      room.number === patient.scheduleInfo.roomNumber 
+        ? { ...room, available: true }
+        : room
+    ));
+
+    const doctorId = patient.scheduleInfo.doctorId;
+    setDoctorDatabase(prev => prev.map(doc => {
+      if (doc.id === doctorId) {
+        const updatedPatients = doc.currentPatients.filter(p => p.patientId !== patientId);
+        return {
+          ...doc,
+          currentPatients: updatedPatients,
+          available: true
+        };
+      }
+      return doc;
+    }));
+
+    setEmergencyQueue(prev => prev.map(p => 
+      p.id === patientId 
+        ? { ...p, status: 'completed', completedAt: new Date().toLocaleString() }
+        : p
+    ));
+
+    addNotification(`✅ Appointment completed for ${patient.patient.name}`, 'success');
+  };
+
+  const getScheduledPatients = () => {
+    return emergencyQueue.filter(p => p.status === 'scheduled');
+  };
+
+  const getFilteredQueue = () => {
+    let filtered = emergencyQueue;
+
+    if (searchQuery) {
+      filtered = filtered.filter(p => 
+        p.patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.prediction.disease.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (filterUrgency !== 'all') {
+      filtered = filtered.filter(p => p.urgency === filterUrgency);
+    }
+
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(p => p.status === filterStatus);
+    }
+
+    return filtered;
+  };
+
+  const getAnalytics = () => {
+    const total = emergencyQueue.length;
+    const critical = emergencyQueue.filter(p => p.urgency === 'CRITICAL').length;
+    const high = emergencyQueue.filter(p => p.urgency === 'HIGH').length;
+    const scheduled = emergencyQueue.filter(p => p.status === 'scheduled').length;
+    const completed = emergencyQueue.filter(p => p.status === 'completed').length;
+    const pending = emergencyQueue.filter(p => p.status === 'pending').length;
+
+    const departmentStats = {};
+    emergencyQueue.forEach(p => {
+      const dept = p.prediction.department;
+      if (!departmentStats[dept]) {
+        departmentStats[dept] = 0;
+      }
+      departmentStats[dept]++;
+    });
+
+    const avgWaitTime = emergencyQueue
+      .filter(p => p.status === 'scheduled' && p.arrivalTime)
+      .reduce((acc, p) => {
+        const wait = new Date(p.scheduleInfo.appointmentTime) - new Date(p.arrivalTime);
+        return acc + (wait / (1000 * 60));
+      }, 0) / (scheduled || 1);
+
+    return {
+      total,
+      critical,
+      high,
+      scheduled,
+      completed,
+      pending,
+      departmentStats,
+      avgWaitTime: Math.round(avgWaitTime)
+    };
+  };
+
+  const NotificationPanel = () => (
+    <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
+      {notifications.map(notif => (
+        <div
+          key={notif.id}
+          className={`p-4 rounded-lg shadow-lg border-l-4 ${
+            notif.type === 'critical' ? 'bg-red-50 border-red-600' :
+            notif.type === 'success' ? 'bg-green-50 border-green-600' :
+            'bg-blue-50 border-blue-600'
+          }`}
+        >
+          <div className="flex items-start gap-2">
+            <Bell className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold">{notif.message}</p>
+              <p className="text-xs text-gray-500 mt-1">{notif.timestamp}</p>
+            </div>
+            <button
+              onClick={() => setNotifications(prev => prev.filter(n => n.id !== notif.id))}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const AnalyticsDashboard = () => {
+    const analytics = getAnalytics();
+
+    return (
+      <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+            <BarChart3 className="w-7 h-7 text-green-600" />
+            Analytics Dashboard
+          </h2>
+          <button
+            onClick={() => setShowAnalytics(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="grid md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-600">
+            <p className="text-sm text-blue-800 font-semibold">Total Patients</p>
+            <p className="text-3xl font-bold text-blue-900 mt-2">{analytics.total}</p>
+          </div>
+          <div className="bg-red-50 rounded-lg p-4 border-l-4 border-red-600">
+            <p className="text-sm text-red-800 font-semibold">Critical Cases</p>
+            <p className="text-3xl font-bold text-red-900 mt-2">{analytics.critical}</p>
+          </div>
+          <div className="bg-green-50 rounded-lg p-4 border-l-4 border-green-600">
+            <p className="text-sm text-green-800 font-semibold">Scheduled</p>
+            <p className="text-3xl font-bold text-green-900 mt-2">{analytics.scheduled}</p>
+          </div>
+          <div className="bg-purple-50 rounded-lg p-4 border-l-4 border-purple-600">
+            <p className="text-sm text-purple-800 font-semibold">Avg Wait (min)</p>
+            <p className="text-3xl font-bold text-purple-900 mt-2">{analytics.avgWaitTime}</p>
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-gray-50 rounded-lg p-4">
+            <h3 className="font-bold text-gray-800 mb-3">Department Distribution</h3>
+            <div className="space-y-2">
+              {Object.entries(analytics.departmentStats).map(([dept, count]) => (
+                <div key={dept} className="flex justify-between items-center">
